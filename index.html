@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="fr">
+<!-- 
+Ah cool vous voulez voir comment a été réalisée cette présentation ! 
+
+Bonne initiative !
+
+Elle utilise une librairie javascript open-source qui s'appelle impress.js, inspirée des présentations que propose Prezi (à ceci près que Prezi utilise du flash, format propriétaire). 
+
+Impress.js est basé sur les nouvelles fonctionnalités de CSS3, et notamment transform, transition et les animations 3D. Mais du coup la présentation ne fonctionne pas forcément sur les anciennes versions des principaux navigateurs, ni sur certaines versions actuelles. Mais les browser supports évoluent et devraient inévitablement guarantir une belle présentation en utilisant impress.js.
+
+La démo officielle de la librairie se trouve ici : http://bartaz.github.io/impress.js 
+et le code source ici : https://github.com/bartaz/impress.js
+
+On trouvera également plusieurs exemples ici : https://github.com/bartaz/impress.js/wiki/Examples-and-demos.
+
+Notons avant de commencer que si impress.js est très bon pour faire des présentations originales, il est aussi beaucoup utilisé pour proposer des navigations dynamiques pour des sites web et des portfolios !
+-->
+
+
+<!-- 
+Première surprise - ou non -, notre présentation n'est ni plus ni moins qu'une page html, avec sa structure classique :
+
+        <!DOCTYPE html>
+        <html lang="fr">
+                <head>
+                        <title>Ma belle présentation</title>
+                </head>
+                <body>
+
+                </body>
+        </html>
+
+On ajoute seulement, pour l'instant, à cette structure classique, juste avant la fermeture du body (</body>), l'appel à la librairie Impress.js, et son déclenchement une fois qu'elle est chargée :
+
+        <script src="js/impress.js"></script>
+        <script>impress().init();</script>
+
+ -->
+<head>
+	<meta charset="utf-8">
+	<meta name="apple-mobile-web-app-capable" content="yes">
+	<title>Le Libre accès en France</title>
+	<meta name="author" content="Laetitia Pot, Nelly Nouvet, Julie Graine, Thibault Mahe">
+	<meta name="description" content="Un exposé introductif à l'évolution du libre accès en France">
+<!-- N'oublions pas non plus de charger notre fichier css, comme pour une page web classique. -->
+	<link href="style.css" rel="stylesheet">
+</head>
+
+<body class="impress-not-supported">
+
+	<!-- L'image et le canvas ici servent uniquement pour le background et ne dépendent pas d'impress.js-->
+	<img id="logo_bg" src="img/logo_bg.png" alt="logo background"/>
+	<canvas id="cvs"></canvas> 
+
+<!-- Impress.js est tellement parfait qu'il assure lui-même un "check support" (ligne 167 de la librairie). Il vérifie si le navigateur supporte le CSS3 3D transform notamment, et si ce n'est pas le cas il ajoute la classe "impress-not-supported" à l'élement body et display le message suivant (fallback). Si le browser support est suffisant, il remplace cette classe par la classe "impress-supported" qui signifie seulement que impress.js peut tourner. 
+
+Il est utile de mettre par défaut cette classe "impress-not-supported" comme c'est le cas ici puisque certains désactivent javascript. Si c'est le cas, le fallback s'affichera par défaut également. Si ce n'est pas le cas, le javascript enlèvera la classe de toute façon. -->
+	<div id="fallback-message">
+		Arf ! Votre navigateur est trop vieux pour faire fonctionner cette présentation. Pardon, cette présentation est trop jeune pour fonctionner sur votre navigateur expérimenté.<br /> Il pourrait être intéressant pour vous d'essayer le nouveau <a href="http://www.google.com/chrome/" target="_blank">Chrome</a>, qu'en pensez-vous ?
+	</div>
+
+<!-- Le "hint" est encore en dehors des diapos et propose d'afficher un message afin d'indiquer à l'utilisateur que la navigation est originale et s'apparente à celle d'un diaporama. Ce bandeau est proposé sur le github du créateur d'impress.js, mais il ne dépend pas de la librairie. Aussi son comportement est-il définit dans le css : la ligne 101 définit l'animation et précise que le bandeau n'est visible que pour la première diapo ("title").
+
+Le petit script se situant en dessous n'est vraiment pas un exemple de bonnes pratiques. On se demande ce qu'il fait là, au milieu du contenu, à manipuler du contenu qui devrait lui aussi figurer dans le corps du html. Mais on pourra fermer les yeux pour cette fois, il ne s'agit que de changer le contenu du hint pour les tablettes et mobiles qui n'utilisent pas de touches directionnelles ou de barre d'espace.
+-->
+	<div id="hint">
+		<p>Utiliser la barre d'espace ou les touches directionnelles pour naviguer</p>
+	</div>
+	<script>
+		if ('ontouchstart' in document.documentElement) {
+		  document.querySelector('.hint').innerHTML = '<p>
+		  Faites glissez vos magnifiques doigts vers la droite ou vers la gauche pour naviguer</p>';
+		}
+	</script>
+<!-- Le diaporama correspond à une div (ou n'importe quelle balise) avec pour identifiant "impress", qui enveloppe toutes les diapos.
+Chaque diapo est également une div (ou, encore une fois, n'importe quelle balise) ayant plusieurs attributs :
+        - un id correspondant au nom de la diapo (pour l'identifier dans l'URL, mais ce n'est pas obligatoire, même si c'est très pratique pour le css)
+        - des coordonées (position)
+        - une classe "step" qui permet à impress.js de comprendre que cette div correspond à une diapo.
+Chaque slide est en fait positionnée dans un espace 3D (x, y, z). L'animation  d'une slide à l'autre correspond seulement au déplacement de l'une vers l'autre. Si par exemple deux slides sont positionnées dans l'espace au même endroit, avec un décalage horizontal de 1000px entre elles, la transition entre les deux diapos sera une simple translation.
+Les trois principaux attributs de positionnement sont ainsi :
+        - data-x : abscisse (x)
+        - data-y : ordonnée (y)
+        - data-z : cote (z)
+Ils définissent ensemble les coordonnées du centre de la slide.
+Et parce que ce n'est pas suffisant pour des utilisateurs exigeants, impress.js propose également 5 autres data properties :
+        - data-scale : pour redimensionner la diapo en fonction de ce facteur, par exemple 0.5 pour que la diapo soit deux fois plus petites que les autres (ou du moins celle dont le scale est à 1 ; 2 pour que ce soit multiplié par deux, etc. Cela permet de créer des effets de zoom et de dézoom notamment.
+        - data-rotate : rotation de la slide selon l'angle spécifié
+        - data-rotate-x : rotation 3D autour de l'axe x
+        - data-rotate-y : rotation 3D autour de l'axe y
+        - data-rotate-z : rotation autour de l'axe z, mais là je ne vois pas l'intérêt puisque c'est logiquement la même chose que data-rotate...
+Essayons de voir plus bas ce que ca donne.
+ -->
+	<div id="impress">
+<!-- 
+La première slide s'appelle "title" et a été ajouté après coup. C'est pourquoi elle ne se situe pas en (0, 0, 0). Mais de manière générale la position de la première slide importe peu, il faut surtout voir la cohérence / l'esthétique de l'ensemble. Ici un data-z a été ajouté afin que la slide soit au-dessus de la suivante : le passage de l'une à l'autre permet d'apporter l'impression que l'on entre dans le diaporama, comme on rentre dans le sujet. Par ailleurs deux effets 3D ont été ajouté (rotate-x et rotate-y). Le diaporama est en effet infini, la dernière page revient à la première, il était donc possible de penser une jolie transition entre ces deux diapos.
+-->
+		<div id="title" data-x='-1000' data-z='500' data-rotate='60' data-rotate-x='-15' data-rotate-y='15' class="step slide">
+<!-- Le contenu de la diapo est tout simplement du contenu balisé (html) et positionné (css).-->        
+			<div class="chrome">Best with <a href="http://www.google.com/chrome/" target="_blank">Chrome or Mozilla Firefox</a></div>
+			
+			<a href="#"><img src="img/logo.png" alt="logo open access"</a>
+			<div class="subtitle">
+				Quelles évolutions du libre accès en France ?
+			</div>
+		</div>
+
+<!-- Il s'agit ici uniquement de diapo positionnées sur un plan 2D. La première diapo est en (0,0), la seconde 200px plus loin vers la droite (200, 0), puis la troisième (400, 0), etc. jusqu'à former une ligne de 5 diapo. La 6ème viendra démarrer une nouvelle ligne 150px en dessous de la première diapo (0, 150), et ainsi de suite.-->
+		<div id="diapo1" data-x='0' data-y='0' data-scale='0.2' class="step slide">
+			<p class="titre"> INTRODUCTION </p>
+			<ul>
+				<li> Paul Feyerabend : cette science anarchiste, celle de l'<span class="bold">échange </span> et du <span class="bold">débat</span>.</li>
+				<li> Merton : la contribution des scientifiques à l'<span class="bold">"héritage commun". </span></li>
+				<li>L'<span class="bold">Ambivalence </span> des NTIC et l'<span class="bold">hybridité </span>de l'open access. </li>
+				<li> Prendre du recul sur l'<span class="bold">évolution du libre accès </span> en France pour ouvrir les débats. </li>
+			</ul>
+		</div>
+
+<!-- Chaque ligne comporte 5 diapos. Chacun est "scaled" à 0.2. Ainsi l'ultime diapo de la présentation, scaled à 1, nous permettra de toutes les voir ensemble (0.2 * 5 = 1). -->
+		<div id="plan" data-x='200' data-y='0' data-scale='0.2' class="step slide">
+			<p>
+			<ul>
+				<li class="titre">L'environnement du Libre Accès</li>
+				<ul>
+					<li>De nouvelles opportunités, de nouveaux débats</li>
+				</ul>	
+				<li class="titre">Modèles de Libre Accès en France</li>
+				<ul>
+					<li> Gold... Green...Platinum : que choisir ? </li>
+				</ul>
+				<li class="titre">Politiques d'accès en France</li>
+				<ul>
+					<li> Vers une valorisation du Libre Accès ? </li>
+				</ul>
+			</ul>
+		</p>
+		</div>
+
+
+		<div id="diapo2" data-x='400' data-y='0' data-scale='0.2' class="step slide">
+			<h1>Contexte</h1>
+		</div>
+
+
+		<div id="diapo3" data-x='600' data-y='0' data-scale='0.2' class="step slide">
+			<p class="titre"> Modèle traditionnel </p>
+			<ul>
+				<li> L'auteur-chercheur soumet son article à une revue </li>
+				<li> L'auteur cède ses droits à l'éditeur </li>
+				<li> 1975 - 1995 : augmentation des prix de 200% à 300% au dessus de l’inflation </li>
+				<li> Budget d'acquisition : + 28% entre 1997 et 2001</li>
+			</ul>
+		</div>
+
+
+		<div id="diapo4" data-x='800' data-y='0' data-scale='0.2' class="step slide">
+			<img src="img/Frise_LP.jpg" alt="Chronologie"/>
+		</div>
+
+
+		<div id="diapo5" data-x='0' data-y='150' data-scale='0.2' class="step slide">
+			<h1>Modèles de Libre Accès en France</h1>
+		</div>
+
+
+		<div id="diapo6" data-x='200' data-y='150' data-scale='0.2' class="step slide">
+			<p class="titre"> Le modèle de diffusion voie dorée (Gold)</p>
+			<p class="titre2">Fonctionnement</p>
+			<ul>
+				<li>L'auteur dépose son article à l'éditeur en version pre-print</li>
+				<li>Éditeur : médiateur entre l'auteur et le lecteur</li>
+				<li>L'accès reste libre et gratuit pour le lecteur avec période d'embargo</li>
+			</ul>
+		</div>
+
+		<div id="diapo7" data-x='400' data-y='150' data-scale='0.2' class="step slide">
+			<p class="titre">Le modèle économique auteur-payeur <br />(Article Processing Charges)</p>
+			<ul>
+				<li> L' équipe de recherche ou institution verse de l'argent aux éditeurs </li>
+				<li>Éditeur : travail de corrections, vérifications, indexation et diffusion </li>
+			</ul>
+		</div>
+
+
+		<div id="diapo8" data-x='600' data-y='150' data-scale='0.2' class="step slide">
+			<!--<table>
+				<tr>
+					<th> Image like</th>
+					<th> Image unlike</th>
+				</tr>
+				<tr>
+					<td> Travail de sélection de l'information par les éditeurs </td>
+				</tr>
+				<tr> 
+					<td> Auteurs doivent payer : première sélection de l'information par rapport à l'argent, peut limiter diffusion de la recherche.</td>
+					<td> Éditeurs décident durée de l'embargo : liberté d'accès à l'information reste relative</td>			
+				</tr>
+			</table> -->
+			<p class="titre2">Avantages</p>
+			<ul>
+				<li>Travail de sélection de l'information par les éditeurs</li>
+			</ul>
+			<p class="titre2">Inconvénients</p>
+			<ul>
+				<li>Auteurs doivent payer : première sélection de l'information par rapport à l'argent, peut limiter diffusion de la recherche.</li>
+				<li>Éditeurs décident durée de l'embargo : liberté d'accès à l'information reste relative</li>
+			</ul>
+
+		</div>
+
+		<div id="diapo9" data-x='800' data-y='150' data-scale='0.2' class="step slide">
+			<p class="titre"> Le modèle de diffusion voie verte (Green)</p>
+			<p class="titre2">Fonctionnement</p>
+			<ul>
+				<li>Dépôt de l'article par le chercheur dans une base de dépôt en ligne</li>
+				<li> Consultation gratuite  </li>
+				<li>Pas d'intervention des éditeurs ou de processus du contrôle par les pairs (peer-reviewing).</li>
+			</ul>
+		</div>
+
+
+		<div id="diapo10" data-x='0' data-y='300' data-scale='0.2' class="step slide">
+			<p class="titre">Modèle économique : Financement par l'État</p>
+			<ul>
+				<li>Conservation de la recherche (archivage) </li>
+				<li>Système de notation des chercheurs</li>
+			</ul>
+			<br />
+			<p class="titre2"> Avantages</p>
+			<ul>
+				<li>Intérêt certain pour l'archivage des articles et système de notation et mutualisation des recherches</li>
+			</ul>
+			<br />
+			<p class="titre2"> Inconvénients</p>
+			<ul>
+				<li>Pour les utilisateur , articles tous de la même qualité ? </li>
+				<li>Masse d'information importante à trier, comment choisir un article plus qu'un autre? Sur quels critères se base-t-on ? </li>
+			</ul>
+		</div>
+
+
+		<div id="diapo11" data-x='200' data-y='300' data-scale='0.2' class="step slide">
+			<p class="titre">Le modèle de diffusion voie platinium (Diamond)</p>
+			<p class="titre2">Fonctionnement</p>
+			<ul>
+				<li>Développer une édition en libre accès qui permette aux auteurs et aux lecteurs d’accéder à la publication sans barrière financière.</li>
+				<li>Promotion d'une alliance forte entre tous les acteurs de l’édition scientifique (chercheurs, éditeurs, bibliothèques, plateformes).</li>
+			</ul>
+		</div>
+
+		<div id="diapo12" data-x='400' data-y='300' data-scale='0.2' class="step slide">
+			<p class="titre">Modèle économique hybride (Freemium) </p>
+			<ul>
+				<li>Investissements publics sur des infrastructures </li>
+				<li>Commercialisation de services à haute valeur ajoutée</li>
+			</ul>
+			<br />
+			<p class="titre2">Fonctionnement</p>
+			<ul>
+				<li>La maison d'édition propose aux bibliothèques des revues libres d'accès (gratuite et ouverte)</li>
+				<li>En contrepartie, la bibliothèque doit payer des services autour de ces articles</li>
+				<li>L'article reste libre d'accès à tous en version html.</li>
+			</ul>
+		</div>
+
+
+		<div id="diapo13" data-x='600' data-y='300' data-scale='0.2' class="step slide">
+			<p class="titre2"> Avantages </p>
+			<ul>
+				<li>La bibliothèque reste propriétaire des contenus</li>
+				<li>Le modèle semble adapté pour les SHS</li>
+				<li>Travail d'édition toujours présent sur les articles : assure la qualité de la recherche</li>
+			</ul>
+			<p class="titre2">Inconvénients</p>
+			<ul>
+				<li> Amalgame entre le modèle de diffusion (Platinium) et le modèle économque (Freemium) : complexifie la compréhension du modèle Libre Accès</li>
+			</ul>
+		</div>
+
+		<div id="diapo14" data-x='800' data-y='300' data-scale='0.2' class="step slide">
+			<h1>L’évolution des politiques d’accès aux publications</h1>
+		</div>
+
+
+
+
+		<div id="diapo15" data-x='0' data-y='450' data-scale='0.2' class="step slide">
+			<p class="titre"> Rappel </p>
+			<img src="img/rappel.png" alt="Rappel"/>
+			<!--<ul>
+				<li> Rappel : Le libre accès et les publications </li>
+				<li> Auto-archivage et archive ouverte </li>
+			</ul> -->
+		</div>
+
+
+		<div id="diapo16" data-x='200' data-y='450' data-scale='0.2' class="step slide">
+			<p class="titre"> Politique pour le libre accès </p>
+			<ul> 
+				<li> Échelle Européenne</li>
+				<li> En France : les repères  </li>
+			</ul>
+		</div>
+
+
+		<div id="diapo17" data-x='400' data-y='450' data-scale='0.2' class="step slide">
+			<p class="titre"> Le mandat de dépôt </p>
+			<ul>
+				<li> Le mandat ID/OA c'est-à-dire le « dépôt immédiat avec options sur les modes d’accès » (Immediate Deposite/Optional Access) est conseillé. </li>
+				<li> Dans le monde, en juin 2012, une obligation de dépôt a été adoptée par 149 institutions, 34 laboratoires et par 52 bailleurs de fonds. </li>
+			</ul>
+		</div>
+
+
+		<div id="diapo18" data-x='600' data-y='450' data-scale='0.2' class="step slide">
+			<p class="titre"> Les Archives ouvertes institutionnelles </p>
+			<ul>
+				<li> Les Archives Ouvertes <a href="http://hal.archives-ouvertes.fr"> HAL </a> (Hyper Articles en Ligne) </li>
+				<li> Les Archives Ouvertes <a href="http://www.couperin.org/"> COUPERIN </a> : Consortium Unifié des Etablissements Universitaires et de Recherche pour l’accès aux Publications Numériques </li>
+			</ul>
+		</div>
+
+
+		<div id="diapo19" data-x='800' data-y='450' data-scale='0.2' class="step slide">
+			<p class="titre"> Politique en travaux </p>
+			<ul>
+				<li> Le débat reste ouvert entre ceux qui
+					<ul>
+						<li>à l'instar de Romary & Armbruster (2009) défendent un système central tel que HAL, sans contrainte forte mais alimenté (aussi) par les éditeurs eux-mêmes </li>
+						<li> et ceux qui comme Stevan Harnad plaident pour des archives institutionnelles avec obligation de dépôt. </li>
+					</ul>
+				</li>
+			</ul>
+		</div>
+
+
+		<div id="conclusion" data-x='0' data-y='600' data-scale='0.2' class="step slide">
+			<p class="titre"> Conclusion </p>
+			<ul>
+				<li>L’obsolescence du modèle traditionnel comme déclencheur. </li>
+				<li>Des moments fondateurs pour le Libre Accès dans le monde : CCSD (2000), HAL (2000), Budapest (2002), Bethesda (2003), Berlin (2003), … </li>
+				<li>Développement des NTIC </li>
+				<li>Des modèles économiques qui s’affrontent : voie(s) dorée(s), voie(s) verte(s), voie(s) platinium(s). Ils déclenchent en France de véritables débats entre les différents acteurs : Cairn, OpenEdition, EDP Science, Couperin, … </li>
+				<li>L’Open Access questionne la scientificité des articles, avec notamment la remise en cause du peer reviewing.</li>
+				<li>Pas de stratégie officielle sur le libre accès en France.</li>
+				<li>Stratégie européenne pour devenir la première économie de la connaissance (Lisbonne, 2002)</li>
+			</ul>	
+		</div> 
+
+
+		<div id="sources" data-x='200' data-y='600' data-scale='0.2' class="step slide">
+			<p class="titre"> Bibliographie & Webographie </p>
+			<ul>
+				<li> <span class="auteur">Joachim Schopfel (dir.)</span>, <span class="italic">La publication scientifique, analyses et perspectives</span>, Paris, Lavoisier, 2008.</li>
+				<li> <span class="auteur">Jean-Claude Guédon</span>, <span class="italic">Accès libre, archives ouvertes et États-nations : les stratégies du possible</span>, 03/03/2008, sic_00277755, version 1, disponible sur : <a href"http://archivesic.ccsd.cnrs.fr/sic_00277755"> archivesic.ccsd.cnrs.fr</a></li>
+				<li> <span class="auteur">Joachim Schöpfel, Hélène Prost</span>, <span class="italic">Développement et Usage des Archives Ouvertes en France. 1e partie : Développement</span>, 04/07/2010, sic_00497389, version 1. disponible sur : <a href"http://archivesic.ccsd.cnrs.fr/sic_00497389"> archivesic.ccsd.cnrs.fr</a></li></li>
+				<li> <span class="auteur">Hélène Bosc</span>, <span class="italic">La Budapest Open Access Initiative (BOAI) pour un libre accès aux résultats de la recherche</span>, 2003, sic_00493625, version 1, disponible sur : <a href"http://archivesic.ccsd.cnrs.fr/sic_00493625"> archivesic.ccsd.cnrs.fr</a> .</li>
+				<li> <span class="auteur">Jean-Michel Salaün</span>, <span class="italic">Libre accès aux ressources scientifiques et place des bibliothèques</span>, 28/11/2004, sic_00001141, version 1, disponible sur : <a href"http://archivesic.ccsd.cnrs.fr/sic_00001141"> archivesic.ccsd.cnrs.fr</a> .</li>
+				<li> <span class="auteur">Hélène Bosc</span>, <span class="italic">Le droit des auteurs à mettre en accès libre leurs propres résultats de recherche</span>, 2004, sic_00493991, version 1, disponible sur : <a href"http://archivesic.ccsd.cnrs.fr/sic_00493991"> archivesic.ccsd.cnrs.fr</a> .</li>
+				<li> <span class="auteur">Hélène Bosc, Hans Dillaerts</span>, <span class="italic">Le libre accès en France en 2012: Entre immobilisme et innovation</span>, 19/12/2012, sic_00767470, version 1, disponible sur : <a href"http://archivesic.ccsd.cnrs.fr/sic_00767470"> archivesic.ccsd.cnrs.fr</a> .</li>
+				<li> <span class="auteur">Hélène Bosc </span> <span class="italic">, Archives ouvertes : quinze ans d’histoire</span>, <span class="italic"> dans Les Archives Ouvertes : enjeux et pratiques. Guide à l’usage des professionnels de l’information</span>, <span class="auteur">C. Aubry, J. Janik</span>, Paris : ADBS, p 27-54 </li>
+
+				<li><span class="auteur"> Hans Dillaerts, Anne-Marie Bertrand, Jean-Marc Quilbé, Jean-Christophe Peyssard, Thomas Parisot, Jean Bornarel, Pascal Aventurier, Christine Berthaud </span> </li>
+			</ul>	
+		</div>
+
+
+		<div id="merci" data-x='400' data-y='600' data-scale='0.2' class="step slide">
+			<h2>Merci de votre écoute !</h2>
+		</div>
+
+		<!-- Une avant dernière slide vide pour admirer le background -->
+		<div id="no-slide" data-x='600' data-y='600' data-scale='0.2' class="step">	
+		</div>
+
+		<!-- Une dernière slide scaled à 1 afin d'avoir uen vision de toutes les diapos. Très utile pour revenir sur des diapos en particulier pour les questions/ réponses et le débat en fin de présentation. -->
+		<div id="overview" class="step" data-x="400" data-y="300" data-scale="1">
+    </div>
+
+	</div>
+	
+	<script src="js/jquery-1.10.2.min.js"></script>
+     <!--
+        Pour utilisez impress.js, il n'est pas nécessaire de connaitre javascript, ni jquery. Cependant, si vous utilisez jquery, attention à la manière de charger la librairie. Si vous la chargez depuis son site internet, comme c'est le cas ici, n'oubliez pas que vous devrez avoir une connection internet lors de la présentation...
+         -->
+	<script src="js/background.js"></script>
+	<!-- background.js est un short code qui ne dépend pas d'impress et qui a été ajouté après coup pour animer le fond des diapos.-->
+	<script src="js/impress.js"></script>
+	<script src="js/screenfull.js"></script>
+    <!--
+        Le plugin javascript screenfull.js nous permet de compléter une petite (l'unique ?) lacune d'impress.js : l'absence de mode pleine écran. Ce qui est quand même pratique pour une présentation !
+         -->
+	<script>
+		impress().init();
+
+		var target = $('html')[0];
+		$('#title a').click(function () {
+		    if (screenfull.enabled) {
+		        screenfull.request(target);
+		    }
+		});
+	</script>
+</body>
+
+<!-- 
+Au début de la présentation, chaque diapo (.step) se voit ajouter dynamiquement par le javascript (donc nous visible ici) une classe "future". Quand la "caméra" arrive sur la diapo, elle remplace cette classe par une classe "present". Le fait qu'une telle classe existe uniquement quand la slide est visionnée permet notamment de créer des effets d'animation démarrant en même temps que la diapo. Une fois la diapo passée, la classe "present" est supprimée et remplacée par la classe "past".
+
+C'est avec une technique similaire que nous avons pu afficher le hint plus haut. Quand une diapo est visionnée, elle obtient la classe "active" et l'élément body possède systématiquement une classe basée sur l'id de la diapo "active", et nommée "impress-on-ID" (avec l'ID = nom de l'id de la diapo active). Ainsi, cela permet de n'afficher le hint que sur la première diapo, et uniquement quand celle-ci est visionnée, en définissant ce comportement dans le css en utilisant la classe "impress-on-title". Bien d'autres choses peuvent être faites, comme changer de background selon la diapo par exemple.
+
+Par contre, et ca c'est sans doute l'élément le plus important pour maîtriser impress.js, comme le précise son créateur Bartek Szopka : "Impress.js may not help you, if you have nothing interesting to say"
+-->
+</html>
